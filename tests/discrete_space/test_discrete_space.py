@@ -1708,3 +1708,34 @@ def test_select_random_empty_cell_reproducible() -> None:
         first.select_random_empty_cell().coordinate
         == second.select_random_empty_cell().coordinate
     )
+
+
+def test_space_without_rng_warns_and_falls_back_to_generator() -> None:
+    """Passing no random number generator warns and creates one."""
+    with pytest.warns(UserWarning, match="Random number generator not specified"):
+        grid = OrthogonalMooreGrid((3, 3))
+    assert isinstance(grid.rng, np.random.Generator)
+
+    with pytest.warns(UserWarning, match="Random number generator not specified"):
+        collection = CellCollection(grid.all_cells.cells)
+    assert isinstance(collection.rng, np.random.Generator)
+
+
+def test_select_random_empty_cell_raises_when_none_empty() -> None:
+    """The base implementation raises IndexError when every cell holds an agent."""
+    model = Model(rng=42)
+    grid = Network(nx.path_graph(5), rng=model.rng)
+    for cell in grid.all_cells:
+        CellAgent(model).move_to(cell)
+
+    with pytest.raises(IndexError, match="Cannot choose from an empty sequence"):
+        grid.select_random_empty_cell()
+
+
+def test_select_random_cell_with_capacity_fallback() -> None:
+    """The explicit fallback is used when probing random cells is switched off."""
+    grid = OrthogonalMooreGrid((3, 3), capacity=1, rng=np.random.default_rng(42))
+    grid._try_random = False
+
+    cell = grid.select_random_cell_with_capacity()
+    assert not cell.is_full

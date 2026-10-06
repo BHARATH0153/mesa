@@ -210,6 +210,20 @@ def test_agentset_select_random_reproducible_with_rng():
     assert [agent.unique_id for agent in first] == [agent.unique_id for agent in second]
 
 
+def test_agentset_select_random_fraction_rounding_to_zero():
+    """Test that a fraction below one agent returns an empty agentset."""
+    model = Model(rng=42)
+    agents = [AgentTest(model) for _ in range(5)]
+    agentset = AgentSet(agents)
+
+    sampled = agentset.select_random(0.1)
+    assert len(sampled) == 0
+    assert sampled.rng is agentset.rng
+
+    agentset.select_random(0.1, inplace=True)
+    assert len(agentset) == 0
+
+
 def test_agentset_serialization():
     """Test pickleability of agentset."""
     model = Model()

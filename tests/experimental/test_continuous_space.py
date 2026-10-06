@@ -572,3 +572,10 @@ def test_continuous_space_rng_kwarg():
 
     with pytest.raises(ValueError, match="not both"):
         ContinuousSpace(dimensions, random=Random(42), rng=model.rng)
+
+
+def test_continuous_space_without_rng_warns_and_falls_back_to_generator():
+    """Passing no random number generator warns and creates one."""
+    with pytest.warns(UserWarning, match="Random number generator not specified"):
+        space = ContinuousSpace([[0, 1], [0, 1]])
+    assert isinstance(space.rng, np.random.Generator)
