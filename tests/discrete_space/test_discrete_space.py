@@ -1658,3 +1658,53 @@ def test_voronoi_int_capacity_enforced_at_runtime() -> None:
     a1.move_to(cell)
     with pytest.raises(CellFullException):
         a2.move_to(cell)
+
+
+# Section 4 — rng keyword argument (Issue #2884)
+
+
+def test_space_rng_kwarg() -> None:
+    """Spaces take an rng keyword argument and share it with their cells."""
+    rng = np.random.default_rng(42)
+    grid = OrthogonalMooreGrid((3, 3), rng=rng)
+
+    assert grid.rng is rng
+    assert all(cell.rng is rng for cell in grid)
+    assert grid.all_cells.rng is rng
+    assert grid.agents.rng is rng
+
+
+def test_space_random_kwarg_deprecated() -> None:
+    """Passing a stdlib Random through random warns and seeds a generator."""
+    with pytest.warns(PendingDeprecationWarning, match="`rng` instead"):
+        grid = OrthogonalMooreGrid((3, 3), random=random.Random(42))
+    assert isinstance(grid.rng, np.random.Generator)
+
+    with pytest.raises(ValueError, match="not both"):
+        OrthogonalMooreGrid(
+            (3, 3), random=random.Random(42), rng=np.random.default_rng(42)
+        )
+
+
+def test_cell_collection_rng_kwarg() -> None:
+    """CellCollection takes an rng keyword argument."""
+    model = Model(rng=42)
+    grid = OrthogonalMooreGrid((3, 3), rng=model.rng)
+    cells = grid.all_cells.select(lambda cell: cell.coordinate[0] == 0)
+
+    assert cells.rng is model.rng
+
+    with pytest.warns(PendingDeprecationWarning, match="`rng` instead"):
+        deprecated = CellCollection(grid.all_cells.cells, random=random.Random(42))
+    assert isinstance(deprecated.rng, np.random.Generator)
+
+
+def test_select_random_empty_cell_reproducible() -> None:
+    """The same rng seed picks the same empty cell."""
+    first = OrthogonalMooreGrid((3, 3), rng=np.random.default_rng(42))
+    second = OrthogonalMooreGrid((3, 3), rng=np.random.default_rng(42))
+
+    assert (
+        first.select_random_empty_cell().coordinate
+        == second.select_random_empty_cell().coordinate
+    )
